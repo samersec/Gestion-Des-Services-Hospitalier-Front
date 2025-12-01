@@ -135,6 +135,16 @@ export const appointmentApi = {
     );
     return response.appointment;
   },
+
+  // Get next appointment for a patient
+  async getNextPatientAppointment(patientId: string): Promise<Appointment | null> {
+    const response = await apiCall<{ appointment: Appointment | null }>(
+      `/appointments/patient/${patientId}/next`,
+      {},
+      true // Require authentication
+    );
+    return response.appointment || null;
+  },
 };
 
 // User API functions
