@@ -10,6 +10,14 @@ export interface User {
   avatar?: string;
 }
 
+// Extended user type used in admin views (matches backend UserDTO)
+export interface AdminUser extends User {
+  dateNaissance?: string;
+  groupeSanguin?: string;
+  isBlocked: boolean;
+  isArchived: boolean;
+}
+
 export interface Appointment {
   id: string;
   patientId: string;
@@ -68,4 +76,14 @@ export interface Donation {
   description?: string;
   date: string;
   statut: 'en_attente' | 'acceptee' | 'traitee';
+}
+
+// Admin statistics about users
+export interface AdminUserStatistics {
+  totalUsers: number;
+  patients: number;
+  medecins: number;
+  pharmaciens: number;
+  blockedUsers: number;
+  archivedUsers: number;
 }

@@ -1,50 +1,83 @@
+import { useEffect, useMemo, useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { StatCard } from '@/components/StatCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Calendar, Heart, TrendingUp } from 'lucide-react';
-import { mockUsers, mockAppointments, mockDonations, mockMedications } from '@/lib/mockData';
+import { Users, UserCircle2, ShieldAlert, ShieldCheck, Loader2 } from 'lucide-react';
+import { adminApi } from '@/lib/api';
+import { AdminUserStatistics } from '@/types';
+import { toast } from 'sonner';
 
 const Statistics = () => {
-  const stats = {
-    totalUsers: mockUsers.length,
-    totalAppointments: mockAppointments.length,
-    totalDonations: mockDonations.length,
-    lowStockItems: mockMedications.filter(m => m.stock < m.seuilAlerte).length,
-  };
+  const [stats, setStats] = useState<AdminUserStatistics | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      setIsLoading(true);
+      try {
+        const data = await adminApi.getUserStatistics();
+        setStats(data);
+      } catch (error: any) {
+        toast.error(error.message || 'Erreur lors du chargement des statistiques');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadStats();
+  }, []);
+
+  const roleDistribution = useMemo(() => {
+    if (!stats || stats.totalUsers === 0) {
+      return [];
+    }
+
+    const entries = [
+      { role: 'patient', count: stats.patients },
+      { role: 'medecin', count: stats.medecins },
+      { role: 'pharmacien', count: stats.pharmaciens },
+      { role: 'autres', count: stats.totalUsers - (stats.patients + stats.medecins + stats.pharmaciens) },
+    ];
+
+    return entries.map(({ role, count }) => ({
+      role,
+      count,
+      percentage: stats.totalUsers ? (count / stats.totalUsers) * 100 : 0,
+    }));
+  }, [stats]);
 
   return (
     <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Statistiques Globales</h1>
-          <p className="text-muted-foreground">Vue d'ensemble de l'activité hospitalière</p>
+          <h1 className="text-3xl font-bold">Statistiques Utilisateurs</h1>
+          <p className="text-muted-foreground">Vue d'ensemble des comptes dans le système</p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatCard
-            title="Utilisateurs Total"
-            value={stats.totalUsers}
+            title="Utilisateurs Totaux"
+            value={stats?.totalUsers ?? 0}
             icon={Users}
             variant="primary"
-            trend={{ value: 12, isPositive: true }}
           />
           <StatCard
-            title="Rendez-vous"
-            value={stats.totalAppointments}
-            icon={Calendar}
-            variant="success"
-          />
-          <StatCard
-            title="Dons Reçus"
-            value={stats.totalDonations}
-            icon={Heart}
+            title="Patients"
+            value={stats?.patients ?? 0}
+            icon={UserCircle2}
             variant="default"
           />
           <StatCard
-            title="Alertes Stock"
-            value={stats.lowStockItems}
-            icon={TrendingUp}
+            title="Bloqués"
+            value={stats?.blockedUsers ?? 0}
+            icon={ShieldAlert}
             variant="warning"
+          />
+          <StatCard
+            title="Archivés"
+            value={stats?.archivedUsers ?? 0}
+            icon={ShieldCheck}
+            variant="secondary"
           />
         </div>
 
@@ -52,67 +85,93 @@ const Statistics = () => {
           <Card>
             <CardHeader>
               <CardTitle>Répartition par Rôle</CardTitle>
-              <CardDescription>Distribution des utilisateurs</CardDescription>
+              <CardDescription>Distribution des utilisateurs par type de compte</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {['admin', 'patient', 'medecin', 'pharmacien', 'donnateur'].map(role => {
-                  const count = mockUsers.filter(u => u.role === role).length;
-                  const percentage = (count / mockUsers.length) * 100;
-                  return (
-                    <div key={role} className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="capitalize font-medium">{role}</span>
-                        <span className="text-muted-foreground">{count} ({percentage.toFixed(0)}%)</span>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>Chargement des statistiques...</span>
+                </div>
+              ) : !stats || stats.totalUsers === 0 ? (
+                <p className="text-sm text-muted-foreground py-6 text-center">
+                  Aucune donnée utilisateur disponible pour le moment.
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {roleDistribution.map(item => (
+                    <div key={item.role} className="space-y-2">
+                      <div className="flex items-center justify_between text-sm">
+                        <span className="capitalize font-medium">{item.role}</span>
+                        <span className="text-muted-foreground">
+                          {item.count} ({item.percentage.toFixed(0)}%)
+                        </span>
                       </div>
                       <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                         <div 
                           className="h-full bg-primary transition-all"
-                          style={{ width: `${percentage}%` }}
+                          style={{ width: `${item.percentage}%` }}
                         />
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Activité Récente</CardTitle>
-              <CardDescription>Dernières actions dans le système</CardDescription>
+              <CardTitle>Résumé Rapide</CardTitle>
+              <CardDescription>Vue synthétique de l'état des comptes</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-start gap-3 p-3 rounded-lg border">
-                  <div className="h-8 w-8 rounded-full bg-success/10 flex items-center justify-center flex-shrink-0">
-                    <Calendar className="h-4 w-4 text-success" />
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>Chargement...</span>
+                </div>
+              ) : !stats ? (
+                <p className="text-sm text-muted-foreground py-6 text-center">
+                  Impossible de charger les statistiques.
+                </p>
+              ) : (
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center justify-between p-3 rounded-lg border">
+                    <div>
+                      <p className="font-medium">Comptes actifs</p>
+                      <p className="text-xs text-muted-foreground">
+                        Utilisateurs non bloqués et non archivés
+                      </p>
+                    </div>
+                    <span className="font-semibold">
+                      {stats.totalUsers - stats.blockedUsers - stats.archivedUsers}
+                    </span>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium">Nouveau rendez-vous</p>
-                    <p className="text-xs text-muted-foreground">Il y a 2 heures</p>
+                  <div className="flex items-center justify-between p-3 rounded-lg border">
+                    <div>
+                      <p className="font-medium">Comptes bloqués</p>
+                      <p className="text-xs text-muted-foreground">
+                        Ne peuvent plus se connecter à la plateforme
+                      </p>
+                    </div>
+                    <span className="font-semibold text-amber-600">
+                      {stats.blockedUsers}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg border">
+                    <div>
+                      <p className="font-medium">Comptes archivés</p>
+                      <p className="text-xs text-muted-foreground">
+                        Conservés pour l&apos;historique mais inactifs
+                      </p>
+                    </div>
+                    <span className="font-semibold text-slate-600">
+                      {stats.archivedUsers}
+                    </span>
                   </div>
                 </div>
-                <div className="flex items-start gap-3 p-3 rounded-lg border">
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Users className="h-4 w-4 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Nouvel utilisateur inscrit</p>
-                    <p className="text-xs text-muted-foreground">Il y a 5 heures</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 p-3 rounded-lg border">
-                  <div className="h-8 w-8 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
-                    <Heart className="h-4 w-4 text-accent" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Nouveau don reçu</p>
-                    <p className="text-xs text-muted-foreground">Il y a 1 jour</p>
-                  </div>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </div>

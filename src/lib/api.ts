@@ -1,4 +1,4 @@
-import { Appointment, User } from '@/types';
+import { Appointment, User, AdminUser, AdminUserStatistics } from '@/types';
 
 // API configuration
 const API_BASE_URL = 'http://localhost:8081/api';
@@ -190,5 +190,125 @@ export const userApi = {
       true // Require authentication
     );
     return response.data;
+  },
+};
+
+// Admin API functions
+export const adminApi = {
+  // Get all users (for admin management)
+  async getAllUsers(): Promise<{ users: AdminUser[]; total: number }> {
+    const response = await apiCall<{ data: any[]; total: number }>(
+      '/admin/users',
+      {},
+      true
+    );
+    const mappedUsers: AdminUser[] = (response.data || []).map((u) => ({
+      id: u.id,
+      email: u.email,
+      nom: u.nom,
+      prenom: u.prenom,
+      role: u.role,
+      telephone: u.telephone,
+      dateNaissance: u.dateNaissance,
+      groupeSanguin: u.groupeSanguin,
+      isBlocked: u.blocked,
+      isArchived: u.archived,
+    }));
+    return {
+      users: mappedUsers,
+      total: response.total || mappedUsers.length,
+    };
+  },
+
+  // Get user statistics for admin dashboard
+  async getUserStatistics(): Promise<AdminUserStatistics> {
+    const response = await apiCall<AdminUserStatistics>(
+      '/admin/statistics',
+      {},
+      true
+    );
+    return response;
+  },
+
+  // Block a user
+  async blockUser(userId: string): Promise<AdminUser> {
+    const response = await apiCall<{ data: any }>(
+      `/admin/users/${userId}/block`,
+      {
+        method: 'PUT',
+      },
+      true
+    );
+    const u = response.data;
+    return {
+      id: u.id,
+      email: u.email,
+      nom: u.nom,
+      prenom: u.prenom,
+      role: u.role,
+      telephone: u.telephone,
+      dateNaissance: u.dateNaissance,
+      groupeSanguin: u.groupeSanguin,
+      isBlocked: u.blocked,
+      isArchived: u.archived,
+    };
+  },
+
+  // Unblock a user
+  async unblockUser(userId: string): Promise<AdminUser> {
+    const response = await apiCall<{ data: any }>(
+      `/admin/users/${userId}/unblock`,
+      {
+        method: 'PUT',
+      },
+      true
+    );
+    const u = response.data;
+    return {
+      id: u.id,
+      email: u.email,
+      nom: u.nom,
+      prenom: u.prenom,
+      role: u.role,
+      telephone: u.telephone,
+      dateNaissance: u.dateNaissance,
+      groupeSanguin: u.groupeSanguin,
+      isBlocked: u.blocked,
+      isArchived: u.archived,
+    };
+  },
+
+  // Create a new user (by admin)
+  async createUser(payload: {
+    nom: string;
+    prenom: string;
+    email: string;
+    password: string;
+    role: 'patient' | 'medecin' | 'pharmacien' | 'donnateur';
+    telephone?: string;
+    dateNaissance?: string;
+    groupeSanguin?: string;
+  }): Promise<AdminUser> {
+    const response = await apiCall<{ data: any }>(
+      '/admin/users',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+      true
+    );
+    const u = response.data;
+    return {
+      id: u.id,
+      email: u.email,
+      nom: u.nom,
+      prenom: u.prenom,
+      role: u.role,
+      telephone: u.telephone,
+      dateNaissance: u.dateNaissance,
+      groupeSanguin: u.groupeSanguin,
+      isBlocked: u.blocked,
+      isArchived: u.archived,
+    };
   },
 };
