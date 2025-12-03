@@ -63,32 +63,7 @@ const Login = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 p-4">
       <div className="w-full max-w-5xl">
         {/* Toggle Buttons */}
-        <div className="flex justify-center gap-4 mb-8">
-          <Button
-            variant={loginType === 'user' ? 'default' : 'outline'}
-            onClick={() => {
-              setLoginType('user');
-              setEmail('');
-              setPassword('');
-            }}
-            className="w-40"
-          >
-            <Heart className="mr-2 h-4 w-4" />
-            Utilisateurs
-          </Button>
-          <Button
-            variant={loginType === 'admin' ? 'default' : 'outline'}
-            onClick={() => {
-              setLoginType('admin');
-              setEmail('');
-              setPassword('');
-            }}
-            className="w-40"
-          >
-            <Shield className="mr-2 h-4 w-4" />
-            Administrateurs
-          </Button>
-        </div>
+       
 
         {/* User Login Interface */}
         {loginType === 'user' && (
@@ -134,9 +109,7 @@ const Login = () => {
                   <CardTitle className="text-2xl">HôpitalApp</CardTitle>
                 </div>
                 <CardTitle className="text-2xl">Connexion Utilisateur</CardTitle>
-                <CardDescription>
-                  Connectez-vous à votre espace personnel (Patient, Médecin, Donateur)
-                </CardDescription>
+                
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -182,32 +155,10 @@ const Login = () => {
                     <div className="absolute inset-0 flex items-center">
                       <span className="w-full border-t" />
                     </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-card px-2 text-muted-foreground">Comptes de test</span>
-                    </div>
+                    
                   </div>
                   
-                  <div className="mt-4 space-y-2">
-                    {userAccounts.map((account) => (
-                      <Button
-                        key={account.email}
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start text-left"
-                        onClick={() => {
-                          setEmail(account.email);
-                          setPassword('password123');
-                        }}
-                      >
-                        <span className="font-medium">{account.role}</span>
-                        <span className="ml-auto text-xs text-muted-foreground">{account.email}</span>
-                      </Button>
-                    ))}
-                    <p className="text-xs text-muted-foreground text-center mt-2">
-                      Mot de passe pour tous les comptes : <code className="bg-muted px-1.5 py-0.5 rounded">password123</code>
-                    </p>
-                  </div>
+                 
                 </div>
               </CardContent>
             </Card>
