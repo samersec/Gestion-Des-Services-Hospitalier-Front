@@ -746,3 +746,125 @@ export const notificationApi = {
     );
   },
 };
+
+// Medical Document API functions
+export interface MedicalDocument {
+  id: string;
+  titre: string;
+  type: string; // ordonnance, analyse, rapport, autre
+  urlFichier: string;
+  dateUpload: string;
+  patientId: string;
+  medecinId: string;
+  description?: string;
+}
+
+export interface MedicalDocumentApiResponse {
+  message: string;
+  type: 'success' | 'error';
+  count?: number;
+  data: MedicalDocument | MedicalDocument[];
+}
+
+export const medicalDocumentApi = {
+  // Upload a medical document
+  async uploadMedicalDocument(
+    titre: string,
+    type: string,
+    patientId: string,
+    medecinId: string,
+    description: string | undefined,
+    file: File
+  ): Promise<MedicalDocument> {
+    const formData = new FormData();
+    formData.append('titre', titre);
+    formData.append('type', type);
+    formData.append('patientId', patientId);
+    formData.append('medecinId', medecinId);
+    if (description) {
+      formData.append('description', description);
+    }
+    formData.append('file', file);
+
+    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/medical-documents/upload`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${btoa(`${localStorage.getItem('email')}:${localStorage.getItem('password')}`)}`,
+      },
+      credentials: 'include',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Error uploading medical document');
+    }
+
+    const result = await response.json();
+    return result.data;
+  },
+
+  // Get all medical documents for a patient
+  async getMedicalDocumentsByPatient(patientId: string): Promise<MedicalDocument[]> {
+    const response = await apiCall<MedicalDocumentApiResponse>(
+      `/medical-documents/patient/${patientId}`,
+      {},
+      true
+    );
+    return Array.isArray(response.data) ? response.data : [response.data];
+  },
+
+  // Get all medical documents uploaded by a doctor
+  async getMedicalDocumentsByMedecin(medecinId: string): Promise<MedicalDocument[]> {
+    const response = await apiCall<MedicalDocumentApiResponse>(
+      `/medical-documents/medecin/${medecinId}`,
+      {},
+      true
+    );
+    return Array.isArray(response.data) ? response.data : [response.data];
+  },
+
+  // Get medical documents for a patient uploaded by a specific doctor
+  async getMedicalDocumentsByPatientAndMedecin(patientId: string, medecinId: string): Promise<MedicalDocument[]> {
+    const response = await apiCall<MedicalDocumentApiResponse>(
+      `/medical-documents/patient/${patientId}/medecin/${medecinId}`,
+      {},
+      true
+    );
+    return Array.isArray(response.data) ? response.data : [response.data];
+  },
+
+  // Download a medical document
+  async downloadMedicalDocument(documentId: string): Promise<Blob> {
+    const email = localStorage.getItem('email');
+    const password = localStorage.getItem('password');
+    const auth = btoa(`${email}:${password}`);
+
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/medical-documents/${documentId}/download`,
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${auth}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Error downloading medical document');
+    }
+
+    return response.blob();
+  },
+
+  // Delete a medical document
+  async deleteMedicalDocument(documentId: string): Promise<void> {
+    await apiCall<MedicalDocumentApiResponse>(
+      `/medical-documents/${documentId}`,
+      {
+        method: 'DELETE',
+      },
+      true
+    );
+  },
+};
