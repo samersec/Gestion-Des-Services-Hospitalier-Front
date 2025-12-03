@@ -52,7 +52,7 @@ export function AppSidebar() {
       case 'pharmacien':
         return [
           { title: 'Tableau de bord', url: '/dashboard', icon: LayoutDashboard },
-          { title: 'Inventaire', url: '/inventory', icon: Package },
+          { title: 'Stock', url: '/inventory', icon: Package },
           { title: 'Commandes', url: '/orders', icon: ShoppingCart },
           { title: 'Alertes Stock', url: '/stock-alerts', icon: Pill },
         ];
