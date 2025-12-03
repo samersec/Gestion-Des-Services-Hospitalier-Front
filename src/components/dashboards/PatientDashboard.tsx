@@ -38,6 +38,10 @@ export const PatientDashboard = () => {
     }
   };
 
+  const today = new Date().toISOString().split('T')[0];
+  const todayConfirmedAppointments = appointments.filter(
+    a => a.statut === 'confirme' && a.date === today
+  );
   const upcomingAppointments = appointments.filter(a => a.statut !== 'termine' && a.statut !== 'annule');
   const pendingAppointments = appointments.filter(a => a.statut === 'en_attente');
   const completedAppointments = appointments.filter(a => a.statut === 'termine');
@@ -49,12 +53,18 @@ export const PatientDashboard = () => {
         <p className="text-muted-foreground">Gérez vos rendez-vous et consultez votre dossier médical</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <StatCard
           title="Rendez-vous à venir"
           value={upcomingAppointments.length}
           icon={Calendar}
           variant="primary"
+        />
+        <StatCard
+          title="RDV Aujourd'hui"
+          value={todayConfirmedAppointments.length}
+          icon={Clock}
+          variant="default"
         />
         <StatCard
           title="Consultations"

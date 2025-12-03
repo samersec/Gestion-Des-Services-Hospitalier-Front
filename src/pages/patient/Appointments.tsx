@@ -25,6 +25,7 @@ const Appointments = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   // Form state
   const [selectedMedecinId, setSelectedMedecinId] = useState('');
@@ -32,7 +33,14 @@ const Appointments = () => {
   const [date, setDate] = useState('');
   const [heure, setHeure] = useState('');
   const [motif, setMotif] = useState('');
-  const [notes, setNotes] = useState('');
+
+  // Edit form state
+  const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
+  const [editDate, setEditDate] = useState('');
+  const [editHeure, setEditHeure] = useState('');
+  const [editMotif, setEditMotif] = useState('');
+  const [editNote, setEditNote] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Load appointments and data on mount
   useEffect(() => {
@@ -85,13 +93,12 @@ const Appointments = () => {
 
       setIsCreating(true);
       try {
-        const newAppointment = await appointmentApi.createAppointmentByMedecin({
+        await appointmentApi.createAppointmentByMedecin({
           patientId: selectedPatientId,
           medecinId: user.id,
           date,
           heure,
           motif,
-          notes: notes || undefined,
         });
 
         toast.success('Rendez-vous créé avec succès !');
@@ -101,7 +108,6 @@ const Appointments = () => {
         setDate('');
         setHeure('');
         setMotif('');
-        setNotes('');
         setIsDialogOpen(false);
         
         // Reload appointments
@@ -120,13 +126,12 @@ const Appointments = () => {
 
       setIsCreating(true);
       try {
-        const newAppointment = await appointmentApi.createAppointment({
+        await appointmentApi.createAppointment({
           patientId: user.id,
           medecinId: selectedMedecinId,
           date,
           heure,
           motif,
-          notes: notes || undefined,
         });
 
         toast.success('Rendez-vous créé avec succès !');
@@ -136,7 +141,6 @@ const Appointments = () => {
         setDate('');
         setHeure('');
         setMotif('');
-        setNotes('');
         setIsDialogOpen(false);
         
         // Reload appointments
@@ -160,6 +164,102 @@ const Appointments = () => {
       await loadData();
     } catch (error: any) {
       toast.error(error.message || 'Erreur lors de l\'annulation du rendez-vous');
+    }
+  };
+
+  const handleDeleteAppointment = async (appointmentId: string) => {
+    if (!confirm('Supprimer définitivement ce rendez-vous ?')) {
+      return;
+    }
+
+    try {
+      await appointmentApi.deleteAppointment(appointmentId);
+      toast.success('Rendez-vous supprimé définitivement');
+      await loadData();
+    } catch (error: any) {
+      toast.error(error.message || 'Erreur lors de la suppression');
+    }
+  };
+
+  const openEditDialog = (appointment: Appointment) => {
+    setEditingAppointment(appointment);
+    setEditDate(appointment.date || '');
+    setEditHeure(appointment.heure || '');
+    setEditMotif(appointment.motif || '');
+    setEditNote('');
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateAppointment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAppointment) return;
+    if (!editDate || !editHeure || !editMotif) {
+      toast.error('Veuillez remplir la date, l\'heure et le motif');
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      await appointmentApi.updateAppointmentDetails(editingAppointment.id, {
+        date: editDate,
+        heure: editHeure,
+        motif: editMotif,
+      });
+
+      if (editNote.trim()) {
+        await appointmentApi.addAppointmentNote(editingAppointment.id, {
+          message: editNote.trim(),
+          authorId: user.id,
+          authorRole: isMedecin ? 'medecin' : 'patient',
+        });
+      }
+
+      toast.success('Rendez-vous mis à jour');
+      setIsEditDialogOpen(false);
+      setEditingAppointment(null);
+      await loadData();
+    } catch (error: any) {
+      toast.error(error.message || 'Erreur lors de la mise à jour du rendez-vous');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleNoteInputChange = (appointmentId: string, value: string) => {
+    setNoteInputs((prev) => ({
+      ...prev,
+      [appointmentId]: value,
+    }));
+  };
+
+  const handleAddNote = async (appointmentId: string) => {
+    const message = noteInputs[appointmentId]?.trim();
+    if (!message) {
+      toast.error('Veuillez saisir une note');
+      return;
+    }
+    if (!user?.id) {
+      toast.error('Vous devez être connecté');
+      return;
+    }
+
+    setIsAddingNoteId(appointmentId);
+    try {
+      await appointmentApi.addAppointmentNote(appointmentId, {
+        message,
+        authorId: user.id,
+        authorRole: isMedecin ? 'medecin' : 'patient',
+      });
+      toast.success('Note ajoutée');
+      setNoteInputs((prev) => ({
+        ...prev,
+        [appointmentId]: '',
+      }));
+      await loadData();
+    } catch (error: any) {
+      toast.error(error.message || 'Erreur lors de l\'ajout de la note');
+    } finally {
+      setIsAddingNoteId(null);
     }
   };
 
@@ -299,15 +399,6 @@ const Appointments = () => {
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notes (optionnel)</Label>
-                  <Textarea 
-                    id="notes"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Ajoutez des notes si nécessaire..."
-                  />
-                </div>
                 <Button type="submit" className="w-full" disabled={isCreating}>
                   {isCreating ? (
                     <>
@@ -322,6 +413,67 @@ const Appointments = () => {
             </DialogContent>
           </Dialog>
         </div>
+
+        {/* Edit appointment dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Modifier le rendez-vous</DialogTitle>
+              <DialogDescription>Disponible uniquement pour les rendez-vous en attente</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleUpdateAppointment} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-date">Date</Label>
+                <Input
+                  id="edit-date"
+                  type="date"
+                  value={editDate}
+                  min={getMinDate()}
+                  onChange={(e) => setEditDate(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-heure">Heure</Label>
+                <Input
+                  id="edit-heure"
+                  type="time"
+                  value={editHeure}
+                  onChange={(e) => setEditHeure(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-motif">Motif</Label>
+                <Textarea
+                  id="edit-motif"
+                  value={editMotif}
+                  onChange={(e) => setEditMotif(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-note">Note (optionnel)</Label>
+                <Textarea
+                  id="edit-note"
+                  value={editNote}
+                  onChange={(e) => setEditNote(e.target.value)}
+                  placeholder="Ajouter une note liée à ce rendez-vous..."
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={isUpdating}>
+                {isUpdating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Mise à jour...
+                  </>
+                ) : (
+                  'Enregistrer les modifications'
+                )}
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         <div className="flex items-center gap-3">
           <Filter className="h-4 w-4 text-muted-foreground" />
@@ -399,46 +551,110 @@ const Appointments = () => {
                         <span>{apt.heure}</span>
                       </div>
                     </div>
-                    {apt.notes && (
-                      <p className="mt-3 text-sm text-muted-foreground">
-                        Note : {apt.notes}
-                      </p>
-                    )}
-                    <div className="flex gap-2 mt-4">
-                      {isMedecin && (
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => {
-                            // Update status logic for medecin
-                            const newStatus = apt.statut === 'en_attente' ? 'confirme' : 
-                                            apt.statut === 'confirme' ? 'termine' : apt.statut;
-                            if (newStatus !== apt.statut) {
-                              appointmentApi.updateAppointmentStatus(apt.id, newStatus as any)
-                                .then(() => {
-                                  toast.success('Statut mis à jour');
-                                  loadData();
-                                })
-                                .catch((error: any) => {
-                                  toast.error(error.message || 'Erreur lors de la mise à jour');
-                                });
-                            }
-                          }}
-                        >
-                          {apt.statut === 'en_attente' ? 'Confirmer' :
-                           apt.statut === 'confirme' ? 'Marquer comme terminé' :
-                           'Modifier le statut'}
-                        </Button>
+                    <div className="mt-3 space-y-2 text-sm max-h-32 overflow-y-auto pr-1">
+                      {apt.notesHistory && apt.notesHistory.length > 0 ? (
+                        apt.notesHistory.map((note) => {
+                          const role = (note.authorRole || '').toLowerCase();
+                          return (
+                            <div
+                              key={note.id}
+                              className="rounded-md border p-2 bg-muted/40"
+                            >
+                              <div className="flex items-center justify-between">
+                                <span
+                                  className={
+                                    role === 'medecin'
+                                      ? 'font-semibold text-sky-700'
+                                      : 'font-semibold text-blue-600'
+                                  }
+                                >
+                                  {role === 'medecin' ? 'Médecin' : 'Patient'}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {new Date(note.createdAt).toLocaleString('fr-FR')}
+                                </span>
+                              </div>
+                              <p className="text-muted-foreground mt-1">
+                                {note.message}
+                              </p>
+                            </div>
+                          );
+                        })
+                      ) : apt.notes ? (
+                        <p className="text-muted-foreground">Note : {apt.notes}</p>
+                      ) : (
+                        <p className="text-muted-foreground italic">
+                          Aucune note pour le moment
+                        </p>
                       )}
-                      {(apt.statut === 'en_attente' || (isMedecin && apt.statut !== 'termine')) && (
-                        <Button 
-                          variant="destructive" 
+                    </div>
+
+                    <div className="flex gap-2 mt-4 flex-wrap">
+                      {/* Actions pour les statuts différents */}
+                      {apt.statut === 'annule' ? (
+                        <Button
+                          variant="destructive"
                           size="sm"
-                          onClick={() => handleCancelAppointment(apt.id)}
+                          onClick={() => handleDeleteAppointment(apt.id)}
                         >
-                          Annuler
+                          Supprimer
                         </Button>
+                      ) : (
+                        <>
+                          {apt.statut === 'en_attente' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openEditDialog(apt)}
+                            >
+                              Modifier
+                            </Button>
+                          )}
+                          {/* Le médecin peut modifier le statut uniquement si le RDV n'est pas annulé */}
+                          {isMedecin && (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => {
+                                // Update status logic for medecin
+                                const newStatus = apt.statut === 'en_attente' ? 'confirme' : 
+                                                apt.statut === 'confirme' ? 'termine' : apt.statut;
+                                if (newStatus !== apt.statut) {
+                                  appointmentApi.updateAppointmentStatus(apt.id, newStatus as any)
+                                    .then(() => {
+                                      toast.success('Statut mis à jour');
+                                      loadData();
+                                    })
+                                    .catch((error: any) => {
+                                      toast.error(error.message || 'Erreur lors de la mise à jour');
+                                    });
+                                }
+                              }}
+                            >
+                              {apt.statut === 'en_attente' ? 'Confirmer' :
+                              apt.statut === 'confirme' ? 'Marquer comme terminé' :
+                              'Modifier le statut'}
+                            </Button>
+                          )}
+
+                          {/* Annulation :
+                             - Patient : peut annuler uniquement en attente
+                             - Médecin : peut annuler en attente ou confirmé, mais pas terminé/annulé */}
+                          {(
+                            (apt.statut === 'en_attente') ||
+                            (isMedecin && (apt.statut === 'confirme'))
+                          ) && (
+                            <Button 
+                              variant="destructive" 
+                              size="sm"
+                              onClick={() => handleCancelAppointment(apt.id)}
+                            >
+                              Annuler
+                            </Button>
+                          )}
+                        </>
                       )}
+
                       {apt.statut === 'termine' && isPatient && (
                         <Button variant="outline" size="sm">
                           Voir le compte-rendu

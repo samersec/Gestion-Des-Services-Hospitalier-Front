@@ -1,4 +1,4 @@
-import { Appointment, User, AdminUser, AdminUserStatistics } from '@/types';
+import { Appointment, AppointmentNote, User, AdminUser, AdminUserStatistics } from '@/types';
 
 // API configuration
 const API_BASE_URL = 'http://localhost:8081/api';
@@ -126,6 +126,38 @@ export const appointmentApi = {
     return response.appointment;
   },
 
+  // Update appointment details (date, heure, motif, notes)
+  async updateAppointmentDetails(
+    appointmentId: string,
+    updates: {
+      date?: string;
+      heure?: string;
+      motif?: string;
+      notes?: string | null;
+    }
+  ): Promise<Appointment> {
+    const response = await apiCall<{ appointment: Appointment }>(
+      `/appointments/${appointmentId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      },
+      true
+    );
+    return response.appointment;
+  },
+
+  // Delete appointment
+  async deleteAppointment(appointmentId: string): Promise<void> {
+    await apiCall<{}>(
+      `/appointments/${appointmentId}`,
+      {
+        method: 'DELETE',
+      },
+      true
+    );
+  },
+
   // Get appointment by ID
   async getAppointmentById(appointmentId: string): Promise<Appointment> {
     const response = await apiCall<{ appointment: Appointment }>(
@@ -145,9 +177,25 @@ export const appointmentApi = {
     );
     return response.appointment || null;
   },
+
+  // Add note to appointment
+  async addAppointmentNote(
+    appointmentId: string,
+    payload: { message: string; authorId: string; authorRole: 'patient' | 'medecin' }
+  ): Promise<AppointmentNote> {
+    const response = await apiCall<{ note: AppointmentNote }>(
+      `/appointments/${appointmentId}/notes`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+      true
+    );
+    return response.note;
+  },
 };
 
-// User API functions
+// User & doctor-related API functions
 export const userApi = {
   // Login function
   async login(email: string, password: string): Promise<{ user: User; token: string }> {
@@ -190,6 +238,16 @@ export const userApi = {
       true // Require authentication
     );
     return response.data;
+  },
+
+  // Get patients for a specific doctor (patients that had at least one completed appointment)
+  async getMedecinPatients(medecinId: string): Promise<User[]> {
+    const response = await apiCall<{ patients: User[] }>(
+      `/medecins/${medecinId}/patients`,
+      {},
+      true // Require authentication
+    );
+    return response.patients || [];
   },
 };
 

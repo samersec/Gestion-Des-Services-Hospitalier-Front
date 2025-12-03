@@ -1,15 +1,43 @@
+import { useEffect, useState } from 'react';
 import { StatCard } from '@/components/StatCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Users, Calendar, FileText, Pill, Clock } from 'lucide-react';
-import { mockAppointments, mockMedicalRecords, mockOrders } from '@/lib/mockData';
+import { mockMedicalRecords, mockOrders } from '@/lib/mockData';
 import { useAuth } from '@/contexts/AuthContext';
+import { appointmentApi, userApi } from '@/lib/api';
+import type { Appointment, User } from '@/types';
 
 export const MedecinDashboard = () => {
   const { user } = useAuth();
-  const myAppointments = mockAppointments.filter(a => a.medecinId === user?.id);
   const myRecords = mockMedicalRecords.filter(r => r.medecinId === user?.id);
   const myOrders = mockOrders.filter(o => o.medecinId === user?.id);
+
+  const [patients, setPatients] = useState<User[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+
+  useEffect(() => {
+    const loadData = async () => {
+      if (!user?.id) return;
+      try {
+        const [patientsData, appointmentsData] = await Promise.all([
+          userApi.getMedecinPatients(user.id),
+          appointmentApi.getMedecinAppointments(user.id),
+        ]);
+        setPatients(patientsData);
+        setAppointments(appointmentsData);
+      } catch (e) {
+        // en cas d'erreur, on garde 0 pour les compteurs du dashboard
+        console.error('Failed to load medecin dashboard data', e);
+      }
+    };
+    loadData();
+  }, [user?.id]);
+
+  const today = new Date().toISOString().split('T')[0];
+  const todaysConfirmedAppointments = appointments.filter(
+    a => a.date === today && a.statut === 'confirme'
+  );
 
   return (
     <div className="space-y-6">
@@ -21,13 +49,13 @@ export const MedecinDashboard = () => {
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard
           title="Patients"
-          value={myRecords.length}
+          value={patients.length}
           icon={Users}
           variant="primary"
         />
         <StatCard
           title="RDV Aujourd'hui"
-          value={myAppointments.filter(a => a.date === new Date().toISOString().split('T')[0]).length}
+          value={todaysConfirmedAppointments.length}
           icon={Calendar}
           variant="default"
         />
@@ -53,12 +81,12 @@ export const MedecinDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {myAppointments.length === 0 ? (
+              {todaysConfirmedAppointments.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">
                   Aucun rendez-vous aujourd'hui
                 </p>
               ) : (
-                myAppointments.slice(0, 5).map(apt => (
+                todaysConfirmedAppointments.slice(0, 5).map(apt => (
                   <div key={apt.id} className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
                     <div className="flex items-center justify-between mb-2">
                       <p className="font-medium">{apt.motif}</p>

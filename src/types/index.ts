@@ -18,6 +18,14 @@ export interface AdminUser extends User {
   isArchived: boolean;
 }
 
+export interface AppointmentNote {
+  id: string;
+  authorId: string;
+  authorRole: 'patient' | 'medecin';
+  message: string;
+  createdAt: string;
+}
+
 export interface Appointment {
   id: string;
   patientId: string;
@@ -26,7 +34,9 @@ export interface Appointment {
   heure: string;
   motif: string;
   statut: 'en_attente' | 'confirme' | 'annule' | 'termine';
+  // Legacy general note kept for backwards compatibility
   notes?: string;
+  notesHistory?: AppointmentNote[];
 }
 
 export interface MedicalRecord {
