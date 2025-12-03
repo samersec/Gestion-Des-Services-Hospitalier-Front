@@ -1,16 +1,45 @@
+import { useEffect, useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Users, Search, FileText, Calendar } from 'lucide-react';
-import { mockMedicalRecords, mockAppointments, mockUsers } from '@/lib/mockData';
 import { useAuth } from '@/contexts/AuthContext';
+import { appointmentApi, userApi } from '@/lib/api';
+import type { Appointment, User } from '@/types';
 
 const Patients = () => {
   const { user } = useAuth();
-  const myRecords = mockMedicalRecords.filter(r => r.medecinId === user?.id);
-  const patientIds = [...new Set(myRecords.map(r => r.patientId))];
-  const myPatients = mockUsers.filter(u => patientIds.includes(u.id));
+  const [patients, setPatients] = useState<User[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    const loadData = async () => {
+      if (!user?.id) return;
+      try {
+        const [patientsData, appointmentsData] = await Promise.all([
+          userApi.getMedecinPatients(user.id),
+          appointmentApi.getMedecinAppointments(user.id),
+        ]);
+        setPatients(patientsData);
+        setAppointments(appointmentsData);
+      } catch (e) {
+        // Keep UI graceful on error; errors are handled globally where apiCall throws
+        console.error('Failed to load medecin patients or appointments', e);
+      }
+    };
+    loadData();
+  }, [user?.id]);
+
+  const filteredPatients = patients.filter((p) => {
+    const term = search.toLowerCase();
+    return (
+      p.nom.toLowerCase().includes(term) ||
+      p.prenom.toLowerCase().includes(term) ||
+      `${p.prenom} ${p.nom}`.toLowerCase().includes(term)
+    );
+  });
 
   return (
     <Layout>
@@ -23,12 +52,17 @@ const Patients = () => {
         <div className="flex items-center gap-3">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Rechercher un patient..." className="pl-10" />
+            <Input
+              placeholder="Rechercher un patient..."
+              className="pl-10"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
         </div>
 
         <div className="grid gap-4">
-          {myPatients.length === 0 ? (
+          {filteredPatients.length === 0 ? (
             <Card>
               <CardContent className="pt-6">
                 <div className="text-center py-12">
@@ -40,10 +74,15 @@ const Patients = () => {
               </CardContent>
             </Card>
           ) : (
-            myPatients.map(patient => {
-              const patientRecords = myRecords.filter(r => r.patientId === patient.id);
-              const patientAppointments = mockAppointments.filter(
+            filteredPatients.map(patient => {
+              const patientAppointments = appointments.filter(
                 a => a.patientId === patient.id && a.medecinId === user?.id
+              );
+              const patientConsultations = patientAppointments.filter(
+                a => a.statut === 'termine'
+              );
+              const patientConfirmedRdv = patientAppointments.filter(
+                a => a.statut === 'confirme'
               );
               
               return (
@@ -69,26 +108,18 @@ const Patients = () => {
                       <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                         <FileText className="h-5 w-5 text-primary" />
                         <div>
-                          <p className="text-sm font-medium">{patientRecords.length} Consultations</p>
-                          <p className="text-xs text-muted-foreground">Dossiers médicaux</p>
+                          <p className="text-sm font-medium">{patientConsultations.length} Consultations</p>
+                          <p className="text-xs text-muted-foreground">Statut terminé</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                         <Calendar className="h-5 w-5 text-accent" />
                         <div>
-                          <p className="text-sm font-medium">{patientAppointments.length} RDV</p>
-                          <p className="text-xs text-muted-foreground">Rendez-vous planifiés</p>
+                          <p className="text-sm font-medium">{patientConfirmedRdv.length} RDV</p>
+                          <p className="text-xs text-muted-foreground">Statut confirmé</p>
                         </div>
                       </div>
                     </div>
-                    {patientRecords.length > 0 && (
-                      <div className="mt-4 pt-4 border-t">
-                        <p className="text-sm font-medium mb-2">Dernier diagnostic :</p>
-                        <p className="text-sm text-muted-foreground">
-                          {patientRecords[patientRecords.length - 1].diagnostic}
-                        </p>
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
               );
@@ -101,3 +132,4 @@ const Patients = () => {
 };
 
 export default Patients;
+
