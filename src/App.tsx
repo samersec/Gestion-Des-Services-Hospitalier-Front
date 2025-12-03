@@ -17,6 +17,7 @@ import MedecinPatients from "./pages/medecin/Patients";
 import MedecinOrders from "./pages/medecin/Orders";
 import PharmacienInventory from "./pages/pharmacien/Inventory";
 import PharmacienOrders from "./pages/pharmacien/Orders";
+import PharmacienStockAlerts from "./pages/pharmacien/StockAlerts";
 import DonnateurDonations from "./pages/donnateur/Donations";
 import DonnateurNewDonation from "./pages/donnateur/NewDonation";
 import SharedOrders from "./pages/shared/Orders";
@@ -131,7 +132,7 @@ const App = () => (
               path="/stock-alerts"
               element={
                 <ProtectedRoute allowedRoles={['pharmacien']}>
-                  <PharmacienInventory />
+                  <PharmacienStockAlerts />
                 </ProtectedRoute>
               }
             />

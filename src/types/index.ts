@@ -68,14 +68,29 @@ export interface Medication {
   categorie: string;
 }
 
+// Backend Medicament interface (matches API response)
+export interface Medicament {
+  id: string;
+  name: string;
+  quantity: number;
+  description?: string;
+  price?: number;
+  archived?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Order {
   id: string;
   medecinId: string;
   medicationId: string;
+  patientId?: string;
   quantite: number;
   date: string;
-  statut: 'en_attente' | 'validee' | 'livree' | 'annulee';
+  statut: 'en_attente' | 'validee' | 'refusee' | 'livree' | 'annulee';
   urgence: 'normale' | 'urgente';
+  dateCreation?: string;
+  dateModification?: string;
 }
 
 export interface Donation {

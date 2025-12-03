@@ -370,3 +370,379 @@ export const adminApi = {
     };
   },
 };
+
+// Medicament API functions
+export interface Medicament {
+  id: string;
+  name: string;
+  quantity: number;
+  description?: string;
+  price?: number;
+  alertThreshold?: number;
+  archived?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface MedicamentApiResponse {
+  message: string;
+  type: 'success' | 'error';
+  count?: number;
+  total?: number;
+  data: Medicament | Medicament[];
+  threshold?: number;
+  searchQuery?: string;
+}
+
+export const medicamentApi = {
+  // Get all medicaments
+  async getAllMedicaments(): Promise<Medicament[]> {
+    const response = await apiCall<MedicamentApiResponse>(
+      '/medicaments',
+      {},
+      true // Require authentication
+    );
+    return Array.isArray(response.data) ? response.data : [response.data];
+  },
+
+  // Get medicament by ID
+  async getMedicamentById(id: string): Promise<Medicament> {
+    const response = await apiCall<MedicamentApiResponse>(
+      `/medicaments/${id}`,
+      {},
+      true
+    );
+    return response.data as Medicament;
+  },
+
+  // Search medicaments by name
+  async searchMedicaments(name: string): Promise<Medicament[]> {
+    const response = await apiCall<MedicamentApiResponse>(
+      `/medicaments/search?name=${encodeURIComponent(name)}`,
+      {},
+      true
+    );
+    return Array.isArray(response.data) ? response.data : [response.data];
+  },
+
+  // Get low stock medicaments
+  async getLowStockMedicaments(threshold: number): Promise<Medicament[]> {
+    const response = await apiCall<MedicamentApiResponse>(
+      `/medicaments/low-stock/${threshold}`,
+      {},
+      true
+    );
+    return Array.isArray(response.data) ? response.data : [response.data];
+  },
+
+  // Get medicament count
+  async getMedicamentCount(): Promise<number> {
+    const response = await apiCall<MedicamentApiResponse>(
+      '/medicaments/inventory/count',
+      {},
+      true
+    );
+    return response.total || 0;
+  },
+
+  // Create medicament
+  async createMedicament(medicament: {
+    name: string;
+    quantity: number;
+    description?: string;
+    price?: number;
+    alertThreshold?: number;
+  }): Promise<Medicament> {
+    const response = await apiCall<MedicamentApiResponse>(
+      '/medicaments',
+      {
+        method: 'POST',
+        body: JSON.stringify(medicament),
+      },
+      true
+    );
+    return response.data as Medicament;
+  },
+
+  // Update medicament
+  async updateMedicament(
+    id: string,
+    updates: {
+      name?: string;
+      quantity?: number;
+      description?: string;
+      price?: number;
+      alertThreshold?: number;
+    }
+  ): Promise<Medicament> {
+    const response = await apiCall<MedicamentApiResponse>(
+      `/medicaments/${id}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      },
+      true
+    );
+    return response.data as Medicament;
+  },
+
+  // Update quantity only
+  async updateQuantity(id: string, quantity: number): Promise<Medicament> {
+    const response = await apiCall<MedicamentApiResponse>(
+      `/medicaments/${id}/quantity`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ quantity }),
+      },
+      true
+    );
+    return response.data as Medicament;
+  },
+
+  // Archive medicament
+  async archiveMedicament(id: string): Promise<Medicament> {
+    const response = await apiCall<MedicamentApiResponse>(
+      `/medicaments/${id}/archive`,
+      {
+        method: 'PUT',
+      },
+      true
+    );
+    return response.data as Medicament;
+  },
+};
+
+// Order API functions
+export interface Order {
+  id: string;
+  medecinId: string;
+  medicationId: string;
+  patientId?: string;
+  quantite: number;
+  date: string;
+  statut: 'en_attente' | 'validee' | 'refusee' | 'livree' | 'annulee';
+  urgence: 'normale' | 'urgente';
+  dateCreation?: string;
+  dateModification?: string;
+}
+
+export interface OrderApiResponse {
+  message: string;
+  type: 'success' | 'error';
+  count?: number;
+  data: Order | Order[];
+}
+
+export const orderApi = {
+  // Create order (by doctor)
+  async createOrder(order: {
+    medecinId: string;
+    medicationId: string;
+    patientId?: string;
+    quantite: number;
+    date?: string;
+    urgence: 'normale' | 'urgente';
+  }): Promise<Order> {
+    const response = await apiCall<OrderApiResponse>(
+      '/orders',
+      {
+        method: 'POST',
+        body: JSON.stringify(order),
+      },
+      true
+    );
+    return response.data as Order;
+  },
+
+  // Get all orders
+  async getAllOrders(): Promise<Order[]> {
+    const response = await apiCall<OrderApiResponse>(
+      '/orders',
+      {},
+      true
+    );
+    return Array.isArray(response.data) ? response.data : [response.data];
+  },
+
+  // Get order by ID
+  async getOrderById(id: string): Promise<Order> {
+    const response = await apiCall<OrderApiResponse>(
+      `/orders/${id}`,
+      {},
+      true
+    );
+    return response.data as Order;
+  },
+
+  // Get orders by medecin
+  async getOrdersByMedecin(medecinId: string): Promise<Order[]> {
+    const response = await apiCall<OrderApiResponse>(
+      `/orders/medecin/${medecinId}`,
+      {},
+      true
+    );
+    return Array.isArray(response.data) ? response.data : [response.data];
+  },
+
+  // Get pending orders (for pharmacist)
+  async getPendingOrders(): Promise<Order[]> {
+    const response = await apiCall<OrderApiResponse>(
+      '/orders/pending',
+      {},
+      true
+    );
+    return Array.isArray(response.data) ? response.data : [response.data];
+  },
+
+  // Get validated orders
+  async getValidatedOrders(): Promise<Order[]> {
+    const response = await apiCall<OrderApiResponse>(
+      '/orders/validated',
+      {},
+      true
+    );
+    return Array.isArray(response.data) ? response.data : [response.data];
+  },
+
+  // Get validated orders by patient
+  async getValidatedOrdersByPatient(patientId: string): Promise<Order[]> {
+    const response = await apiCall<OrderApiResponse>(
+      `/orders/patient/${patientId}/validated`,
+      {},
+      true
+    );
+    return Array.isArray(response.data) ? response.data : [response.data];
+  },
+
+  // Validate order (pharmacist)
+  async validateOrder(id: string): Promise<Order> {
+    const response = await apiCall<OrderApiResponse>(
+      `/orders/${id}/validate`,
+      {
+        method: 'PUT',
+      },
+      true
+    );
+    return response.data as Order;
+  },
+
+  // Reject order (pharmacist)
+  async rejectOrder(id: string): Promise<Order> {
+    const response = await apiCall<OrderApiResponse>(
+      `/orders/${id}/reject`,
+      {
+        method: 'PUT',
+      },
+      true
+    );
+    return response.data as Order;
+  },
+
+  // Cancel order (doctor)
+  async cancelOrder(id: string): Promise<Order> {
+    const response = await apiCall<OrderApiResponse>(
+      `/orders/${id}/cancel`,
+      {
+        method: 'PUT',
+      },
+      true
+    );
+    return response.data as Order;
+  },
+
+  // Get orders by status
+  async getOrdersByStatus(statut: string): Promise<Order[]> {
+    const response = await apiCall<OrderApiResponse>(
+      `/orders/status/${statut}`,
+      {},
+      true
+    );
+    return Array.isArray(response.data) ? response.data : [response.data];
+  },
+};
+
+// Notification API functions
+export interface Notification {
+  id: string;
+  userId: string;
+  type: string;
+  title: string;
+  message: string;
+  relatedEntityId?: string;
+  relatedEntityType?: string;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface NotificationApiResponse {
+  message: string;
+  type: 'success' | 'error';
+  count?: number;
+  data: Notification | Notification[];
+}
+
+export const notificationApi = {
+  // Get all notifications for a user
+  async getNotificationsByUser(userId: string): Promise<Notification[]> {
+    const response = await apiCall<NotificationApiResponse>(
+      `/notifications/user/${userId}`,
+      {},
+      true
+    );
+    return Array.isArray(response.data) ? response.data : [response.data];
+  },
+
+  // Get unread notifications for a user
+  async getUnreadNotificationsByUser(userId: string): Promise<Notification[]> {
+    const response = await apiCall<NotificationApiResponse>(
+      `/notifications/user/${userId}/unread`,
+      {},
+      true
+    );
+    return Array.isArray(response.data) ? response.data : [response.data];
+  },
+
+  // Get unread notification count
+  async getUnreadCount(userId: string): Promise<number> {
+    const response = await apiCall<NotificationApiResponse>(
+      `/notifications/user/${userId}/unread/count`,
+      {},
+      true
+    );
+    return response.count || 0;
+  },
+
+  // Mark notification as read
+  async markAsRead(notificationId: string): Promise<Notification> {
+    const response = await apiCall<NotificationApiResponse>(
+      `/notifications/${notificationId}/read`,
+      {
+        method: 'PUT',
+      },
+      true
+    );
+    return response.data as Notification;
+  },
+
+  // Mark all notifications as read for a user
+  async markAllAsRead(userId: string): Promise<void> {
+    await apiCall<NotificationApiResponse>(
+      `/notifications/user/${userId}/read-all`,
+      {
+        method: 'PUT',
+      },
+      true
+    );
+  },
+
+  // Delete notification
+  async deleteNotification(notificationId: string): Promise<void> {
+    await apiCall<NotificationApiResponse>(
+      `/notifications/${notificationId}`,
+      {
+        method: 'DELETE',
+      },
+      true
+    );
+  },
+};
