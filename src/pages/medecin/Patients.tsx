@@ -3,16 +3,44 @@ import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Users, Search, FileText, Calendar } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Users, Search, FileText, Calendar, Upload, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { appointmentApi, userApi } from '@/lib/api';
+import { appointmentApi, userApi, medicalDocumentApi } from '@/lib/api';
 import type { Appointment, User } from '@/types';
+import { useToast } from '@/hooks/use-toast';
 
 const Patients = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [patients, setPatients] = useState<User[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [search, setSearch] = useState('');
+  const [selectedPatient, setSelectedPatient] = useState<User | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  
+  // Form state
+  const [titre, setTitre] = useState('');
+  const [type, setType] = useState<string>('');
+  const [description, setDescription] = useState('');
+  const [file, setFile] = useState<File | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -40,6 +68,72 @@ const Patients = () => {
       `${p.prenom} ${p.nom}`.toLowerCase().includes(term)
     );
   });
+
+  const handleOpenDialog = (patient: User) => {
+    setSelectedPatient(patient);
+    setIsDialogOpen(true);
+    // Reset form
+    setTitre('');
+    setType('');
+    setDescription('');
+    setFile(null);
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setSelectedPatient(null);
+    setTitre('');
+    setType('');
+    setDescription('');
+    setFile(null);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setFile(e.target.files[0]);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!selectedPatient || !user?.id || !file || !titre || !type) {
+      toast({
+        title: 'Erreur',
+        description: 'Veuillez remplir tous les champs obligatoires',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      await medicalDocumentApi.uploadMedicalDocument(
+        titre,
+        type,
+        selectedPatient.id,
+        user.id,
+        description || undefined,
+        file
+      );
+      
+      toast({
+        title: 'Succès',
+        description: 'Document médical ajouté avec succès',
+      });
+      
+      handleCloseDialog();
+    } catch (error) {
+      console.error('Error uploading medical document:', error);
+      toast({
+        title: 'Erreur',
+        description: error instanceof Error ? error.message : 'Erreur lors de l\'upload du document',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   return (
     <Layout>
@@ -100,7 +194,12 @@ const Patients = () => {
                           <CardDescription>{patient.email}</CardDescription>
                         </div>
                       </div>
-                      <Button variant="outline">Voir le dossier</Button>
+                      <Button 
+                        variant="outline"
+                        onClick={() => handleOpenDialog(patient)}
+                      >
+                        Voir le dossier
+                      </Button>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -126,6 +225,100 @@ const Patients = () => {
             })
           )}
         </div>
+
+        {/* Upload Medical Document Dialog */}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Ajouter un document médical</DialogTitle>
+              <DialogDescription>
+                {selectedPatient && `Ajouter un document au dossier de ${selectedPatient.prenom} ${selectedPatient.nom}`}
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSubmit}>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="titre">Titre du document *</Label>
+                  <Input
+                    id="titre"
+                    value={titre}
+                    onChange={(e) => setTitre(e.target.value)}
+                    placeholder="Ex: Ordonnance du 15/01/2024"
+                    required
+                  />
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="type">Type de document *</Label>
+                  <Select value={type} onValueChange={setType} required>
+                    <SelectTrigger id="type">
+                      <SelectValue placeholder="Sélectionner un type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ordonnance">Ordonnance</SelectItem>
+                      <SelectItem value="analyse">Analyse</SelectItem>
+                      <SelectItem value="rapport">Rapport</SelectItem>
+                      <SelectItem value="autre">Autre</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="description">Description (optionnel)</Label>
+                  <Textarea
+                    id="description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Ajouter une description du document..."
+                    rows={3}
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="file">Fichier *</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="file"
+                      type="file"
+                      onChange={handleFileChange}
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                      required
+                      className="cursor-pointer"
+                    />
+                  </div>
+                  {file && (
+                    <p className="text-sm text-muted-foreground">
+                      Fichier sélectionné: {file.name}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCloseDialog}
+                  disabled={isUploading}
+                >
+                  Annuler
+                </Button>
+                <Button type="submit" disabled={isUploading}>
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Upload en cours...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Ajouter le document
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );
