@@ -5,13 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar, Clock, Plus, Filter, Loader2 } from 'lucide-react';
+import { Calendar, Clock, Plus, Filter, Loader2, FileText, Upload, Download } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { appointmentApi, userApi } from '@/lib/api';
+import { appointmentApi, userApi, medicalDocumentApi, type MedicalDocument } from '@/lib/api';
 import { Appointment, User } from '@/types';
+
+const API_BASE_URL = 'http://localhost:8081/api';
 
 const Appointments = () => {
   const { user } = useAuth();
@@ -26,6 +28,17 @@ const Appointments = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDossierDialogOpen, setIsDossierDialogOpen] = useState(false);
+  const [selectedPatientForDossier, setSelectedPatientForDossier] = useState<User | null>(null);
+  const [patientDocuments, setPatientDocuments] = useState<MedicalDocument[]>([]);
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Medical document form state
+  const [docTitre, setDocTitre] = useState('');
+  const [docType, setDocType] = useState<string>('');
+  const [docDescription, setDocDescription] = useState('');
+  const [docFile, setDocFile] = useState<File | null>(null);
 
   // Form state
   const [selectedMedecinId, setSelectedMedecinId] = useState('');
@@ -225,41 +238,78 @@ const Appointments = () => {
     }
   };
 
-  const handleNoteInputChange = (appointmentId: string, value: string) => {
-    setNoteInputs((prev) => ({
-      ...prev,
-      [appointmentId]: value,
-    }));
+  const loadPatientDocuments = async (patientId: string) => {
+    setIsLoadingDocuments(true);
+    try {
+      const documents = await medicalDocumentApi.getMedicalDocumentsByPatient(patientId);
+      setPatientDocuments(documents);
+    } catch (error) {
+      console.error('Error loading patient documents:', error);
+      toast.error('Impossible de charger les documents du patient');
+    } finally {
+      setIsLoadingDocuments(false);
+    }
   };
 
-  const handleAddNote = async (appointmentId: string) => {
-    const message = noteInputs[appointmentId]?.trim();
-    if (!message) {
-      toast.error('Veuillez saisir une note');
+  const handleOpenDossierDialog = async (patientId: string) => {
+    const patient = patients.find(p => p.id === patientId);
+    if (!patient) {
+      toast.error('Patient introuvable');
       return;
     }
-    if (!user?.id) {
-      toast.error('Vous devez être connecté');
+    setSelectedPatientForDossier(patient);
+    setIsDossierDialogOpen(true);
+    await loadPatientDocuments(patientId);
+  };
+
+  const handleCloseDossierDialog = () => {
+    setIsDossierDialogOpen(false);
+    setSelectedPatientForDossier(null);
+    setPatientDocuments([]);
+    setDocTitre('');
+    setDocType('');
+    setDocDescription('');
+    setDocFile(null);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setDocFile(e.target.files[0]);
+    }
+  };
+
+  const handleAddDocument = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!selectedPatientForDossier || !user?.id || !docFile || !docTitre || !docType) {
+      toast.error('Veuillez remplir tous les champs obligatoires');
       return;
     }
 
-    setIsAddingNoteId(appointmentId);
+    setIsUploading(true);
     try {
-      await appointmentApi.addAppointmentNote(appointmentId, {
-        message,
-        authorId: user.id,
-        authorRole: isMedecin ? 'medecin' : 'patient',
-      });
-      toast.success('Note ajoutée');
-      setNoteInputs((prev) => ({
-        ...prev,
-        [appointmentId]: '',
-      }));
-      await loadData();
-    } catch (error: any) {
-      toast.error(error.message || 'Erreur lors de l\'ajout de la note');
+      await medicalDocumentApi.uploadMedicalDocument(
+        docTitre,
+        docType,
+        selectedPatientForDossier.id,
+        user.id,
+        docDescription || undefined,
+        docFile
+      );
+      
+      toast.success('Document médical ajouté avec succès');
+      
+      // Reload documents and reset form
+      await loadPatientDocuments(selectedPatientForDossier.id);
+      setDocTitre('');
+      setDocType('');
+      setDocDescription('');
+      setDocFile(null);
+    } catch (error) {
+      console.error('Error uploading medical document:', error);
+      toast.error(error instanceof Error ? error.message : 'Erreur lors de l\'upload du document');
     } finally {
-      setIsAddingNoteId(null);
+      setIsUploading(false);
     }
   };
 
@@ -475,6 +525,168 @@ const Appointments = () => {
           </DialogContent>
         </Dialog>
 
+        {/* Patient Dossier Dialog */}
+        <Dialog open={isDossierDialogOpen} onOpenChange={setIsDossierDialogOpen}>
+          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Dossier médical - {selectedPatientForDossier?.prenom} {selectedPatientForDossier?.nom}</DialogTitle>
+              <DialogDescription>
+                Consultez et gérez les documents médicaux de ce patient
+              </DialogDescription>
+            </DialogHeader>
+            
+            {/* Existing Documents List */}
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Documents existants</h3>
+                {isLoadingDocuments ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-sm text-muted-foreground">Chargement des documents...</span>
+                  </div>
+                ) : patientDocuments.length === 0 ? (
+                  <div className="text-center py-8 border rounded-lg bg-muted/30">
+                    <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground">Aucun document médical pour ce patient</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {patientDocuments.map((doc) => (
+                      <Card key={doc.id} className="p-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <FileText className="h-4 w-4 text-primary" />
+                              <p className="font-medium">{doc.titre}</p>
+                              <span className="px-2 py-0.5 text-xs rounded-full bg-primary/10 text-primary">
+                                {doc.type}
+                              </span>
+                            </div>
+                            {doc.description && (
+                              <p className="text-sm text-muted-foreground mb-1">{doc.description}</p>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                              Ajouté le {new Date(doc.dateUpload).toLocaleDateString('fr-FR', {
+                                day: 'numeric',
+                                month: 'long',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                window.open(`${API_BASE_URL}/medical-documents/${doc.id}/download`, '_blank');
+                              }}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Divider */}
+              <div className="border-t my-4" />
+
+              {/* Add New Document Form */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Ajouter un nouveau document</h3>
+                <form onSubmit={handleAddDocument}>
+                  <div className="grid gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="doc-titre">Titre du document *</Label>
+                      <Input
+                        id="doc-titre"
+                        value={docTitre}
+                        onChange={(e) => setDocTitre(e.target.value)}
+                        placeholder="Ex: Ordonnance du 15/01/2024"
+                        required
+                      />
+                    </div>
+                    
+                    <div className="grid gap-2">
+                      <Label htmlFor="doc-type">Type de document *</Label>
+                      <Select value={docType} onValueChange={setDocType} required>
+                        <SelectTrigger id="doc-type">
+                          <SelectValue placeholder="Sélectionner un type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ordonnance">Ordonnance</SelectItem>
+                          <SelectItem value="analyse">Analyse</SelectItem>
+                          <SelectItem value="rapport">Rapport</SelectItem>
+                          <SelectItem value="autre">Autre</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="doc-description">Description (optionnel)</Label>
+                      <Textarea
+                        id="doc-description"
+                        value={docDescription}
+                        onChange={(e) => setDocDescription(e.target.value)}
+                        placeholder="Ajouter une description du document..."
+                        rows={3}
+                      />
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="doc-file">Fichier *</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="doc-file"
+                          type="file"
+                          onChange={handleFileChange}
+                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                          required
+                          className="cursor-pointer"
+                        />
+                      </div>
+                      {docFile && (
+                        <p className="text-sm text-muted-foreground">
+                          Fichier sélectionné: {docFile.name}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 mt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleCloseDossierDialog}
+                      disabled={isUploading}
+                      className="flex-1"
+                    >
+                      Fermer
+                    </Button>
+                    <Button type="submit" disabled={isUploading} className="flex-1">
+                      {isUploading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Upload en cours...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="mr-2 h-4 w-4" />
+                          Ajouter le document
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <div className="flex items-center gap-3">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -610,8 +822,8 @@ const Appointments = () => {
                               Modifier
                             </Button>
                           )}
-                          {/* Le médecin peut modifier le statut uniquement si le RDV n'est pas annulé */}
-                          {isMedecin && (
+                          {/* Le médecin peut modifier le statut uniquement si le RDV n'est pas annulé ou terminé */}
+                          {isMedecin && apt.statut !== 'termine' && (
                             <Button 
                               variant="outline" 
                               size="sm"
@@ -655,9 +867,20 @@ const Appointments = () => {
                         </>
                       )}
 
-                      {apt.statut === 'termine' && isPatient && (
+                          {apt.statut === 'termine' && isPatient && (
                         <Button variant="outline" size="sm">
                           Voir le compte-rendu
+                        </Button>
+                      )}
+
+                      {apt.statut === 'termine' && isMedecin && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleOpenDossierDialog(apt.patientId)}
+                        >
+                          <FileText className="h-4 w-4 mr-2" />
+                          Voir le dossier
                         </Button>
                       )}
                     </div>

@@ -6,18 +6,83 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DollarSign, Package, Droplet, Heart } from 'lucide-react';
+import { DollarSign, Package, Droplet, Heart, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { donationApi } from '@/lib/api';
 
 const NewDonation = () => {
-  const [donationType, setDonationType] = useState<'argent' | 'materiel' | 'sang'>('argent');
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const [donationType, setDonationType] = useState<'argent' | 'materiel' | 'sang'>('argent');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmitDonation = (e: React.FormEvent) => {
+  // Form states
+  const [montant, setMontant] = useState('');
+  const [description, setDescription] = useState('');
+  const [dateSang, setDateSang] = useState('');
+  const [heureSang, setHeureSang] = useState('');
+
+  const handleSubmitDonation = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success('Merci pour votre générosité ! Votre don a été enregistré.');
-    navigate('/donations');
+    
+    if (!user?.id) {
+      toast.error('Vous devez être connecté pour faire un don');
+      return;
+    }
+
+    // Validate based on donation type
+    if (donationType === 'argent') {
+      if (!montant || parseFloat(montant) <= 0) {
+        toast.error('Veuillez entrer un montant valide');
+        return;
+      }
+    } else if (donationType === 'materiel') {
+      if (!description || description.trim().length === 0) {
+        toast.error('Veuillez décrire le matériel que vous souhaitez donner');
+        return;
+      }
+    } else if (donationType === 'sang') {
+      if (!dateSang || !heureSang) {
+        toast.error('Veuillez sélectionner une date et une heure pour le don de sang');
+        return;
+      }
+    }
+
+    setIsSubmitting(true);
+    try {
+      const donationData: any = {
+        donateurId: user.id,
+        type: donationType,
+      };
+
+      if (donationType === 'argent') {
+        donationData.montant = parseFloat(montant);
+      } else if (donationType === 'materiel') {
+        donationData.description = description.trim();
+      } else if (donationType === 'sang') {
+        donationData.date = dateSang;
+        donationData.heure = heureSang;
+      }
+
+      await donationApi.createDonation(donationData);
+      
+      toast.success('Merci pour votre générosité ! Votre don a été enregistré.');
+      
+      // Reset form
+      setMontant('');
+      setDescription('');
+      setDateSang('');
+      setHeureSang('');
+      
+      navigate('/donations');
+    } catch (error: any) {
+      console.error('Error creating donation:', error);
+      toast.error(error.message || 'Erreur lors de l\'enregistrement du don');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -87,6 +152,8 @@ const NewDonation = () => {
                       type="number"
                       placeholder="100"
                       min="1"
+                      value={montant}
+                      onChange={(e) => setMontant(e.target.value)}
                       required
                     />
                   </div>
@@ -96,10 +163,7 @@ const NewDonation = () => {
                         key={amount}
                         type="button"
                         variant="outline"
-                        onClick={() => {
-                          const input = document.getElementById('montant') as HTMLInputElement;
-                          if (input) input.value = amount.toString();
-                        }}
+                        onClick={() => setMontant(amount.toString())}
                       >
                         {amount}€
                       </Button>
@@ -122,6 +186,8 @@ const NewDonation = () => {
                       id="description"
                       placeholder="Décrivez le matériel que vous souhaitez donner (type, quantité, état...)..."
                       rows={5}
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
                       required
                     />
                   </div>
@@ -156,6 +222,8 @@ const NewDonation = () => {
                       id="date-sang"
                       type="date"
                       min={new Date().toISOString().split('T')[0]}
+                      value={dateSang}
+                      onChange={(e) => setDateSang(e.target.value)}
                       required
                     />
                   </div>
@@ -164,6 +232,8 @@ const NewDonation = () => {
                     <Input
                       id="heure-sang"
                       type="time"
+                      value={heureSang}
+                      onChange={(e) => setHeureSang(e.target.value)}
                       required
                     />
                   </div>
@@ -178,9 +248,18 @@ const NewDonation = () => {
                   >
                     Annuler
                   </Button>
-                  <Button type="submit" className="flex-1 gap-2">
-                    <Heart className="h-4 w-4" />
-                    Confirmer le don
+                  <Button type="submit" className="flex-1 gap-2" disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Enregistrement...
+                      </>
+                    ) : (
+                      <>
+                        <Heart className="h-4 w-4" />
+                        Confirmer le don
+                      </>
+                    )}
                   </Button>
                 </div>
               </form>

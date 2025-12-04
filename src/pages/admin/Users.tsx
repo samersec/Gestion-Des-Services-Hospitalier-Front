@@ -110,16 +110,16 @@ const Users = () => {
         </div>
 
         <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Rechercher un utilisateur (nom, email, rôle)..."
                 className="pl-10"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
-            </div>
+          </div>
           </div>
 
           {/* Formulaire rapide de création d'utilisateur (affiché uniquement quand demandé) */}
@@ -261,24 +261,24 @@ const Users = () => {
                 Aucun utilisateur trouvé
               </p>
             ) : (
-              <div className="space-y-3">
+            <div className="space-y-3">
                 {filteredUsers.map(user => (
-                  <div 
-                    key={user.id} 
-                    className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <span className="font-semibold text-primary text-lg">
-                          {user.prenom[0]}{user.nom[0]}
-                        </span>
-                      </div>
-                      <div className="space-y-1">
+                <div 
+                  key={user.id} 
+                  className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <span className="font-semibold text-primary text-lg">
+                        {user.prenom[0]}{user.nom[0]}
+                      </span>
+                    </div>
+                    <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-medium">{user.prenom} {user.nom}</p>
-                          <Badge variant={getRoleBadgeVariant(user.role)}>
-                            {user.role}
-                          </Badge>
+                        <p className="font-medium">{user.prenom} {user.nom}</p>
+                        <Badge variant={getRoleBadgeVariant(user.role)}>
+                          {user.role}
+                        </Badge>
                           {user.isBlocked && (
                             <Badge variant="destructive" className="gap-1">
                               <ShieldAlert className="h-3 w-3" />
@@ -290,18 +290,18 @@ const Users = () => {
                               Archivé
                             </Badge>
                           )}
-                        </div>
+                      </div>
                         <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+                        <span className="flex items-center gap-1">
+                          <Mail className="h-3 w-3" />
+                          {user.email}
+                        </span>
+                        {user.telephone && (
                           <span className="flex items-center gap-1">
-                            <Mail className="h-3 w-3" />
-                            {user.email}
+                            <Phone className="h-3 w-3" />
+                            {user.telephone}
                           </span>
-                          {user.telephone && (
-                            <span className="flex items-center gap-1">
-                              <Phone className="h-3 w-3" />
-                              {user.telephone}
-                            </span>
-                          )}
+                        )}
                           {user.dateNaissance && (
                             <span className="text-xs">
                               Né(e) le {new Date(user.dateNaissance).toLocaleDateString('fr-FR')}
@@ -312,9 +312,9 @@ const Users = () => {
                               Groupe sanguin: {user.groupeSanguin}
                             </span>
                           )}
-                        </div>
                       </div>
                     </div>
+                  </div>
                     <div className="flex items-center gap-2">
                       <Button
                         variant={user.isBlocked ? 'outline' : 'destructive'}
@@ -336,11 +336,11 @@ const Users = () => {
                             Bloquer
                           </>
                         )}
-                      </Button>
+                  </Button>
                     </div>
-                  </div>
-                ))}
-              </div>
+                </div>
+              ))}
+            </div>
             )}
           </CardContent>
         </Card>

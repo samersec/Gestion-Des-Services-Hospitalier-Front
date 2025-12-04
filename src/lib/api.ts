@@ -1,4 +1,4 @@
-import { Appointment, AppointmentNote, User, AdminUser, AdminUserStatistics } from '@/types';
+import { Appointment, AppointmentNote, User, AdminUser, AdminUserStatistics, Donation } from '@/types';
 
 // API configuration
 const API_BASE_URL = 'http://localhost:8081/api';
@@ -34,18 +34,43 @@ async function apiCall<T>(
     }
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    headers,
-    ...options,
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      headers,
+      ...options,
+    });
 
-  const data: ApiResponse<T> = await response.json();
+    if (!response.ok) {
+      // Try to parse error response
+      let errorMessage = 'Une erreur est survenue';
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } else {
+          errorMessage = `Erreur ${response.status}: ${response.statusText}`;
+        }
+      } catch (e) {
+        errorMessage = `Erreur ${response.status}: ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
+    }
 
-  if (!response.ok || data.type === 'error') {
-    throw new Error(data.message || 'Une erreur est survenue');
+    const data: ApiResponse<T> = await response.json();
+
+    if (data.type === 'error') {
+      throw new Error(data.message || 'Une erreur est survenue');
+    }
+
+    return data as T;
+  } catch (error: any) {
+    // Handle network errors (connection refused, etc.)
+    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+      throw new Error('Le serveur n\'est pas accessible. Veuillez démarrer le backend sur le port 8081.');
+    }
+    throw error;
   }
-
-  return data as T;
 }
 
 // Appointment API functions
@@ -248,6 +273,45 @@ export const userApi = {
       true // Require authentication
     );
     return response.patients || [];
+  },
+
+  // Forgot password - request reset code
+  async forgotPassword(email: string): Promise<{ message: string; type: string; code?: string }> {
+    const response = await apiCall<{ message: string; type: string; code?: string }>(
+      '/users/forgot-password',
+      {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      },
+      false // No auth required
+    );
+    return response;
+  },
+
+  // Verify reset code
+  async verifyResetCode(email: string, code: string): Promise<{ message: string; type: string }> {
+    const response = await apiCall<{ message: string; type: string }>(
+      '/users/verify-reset-code',
+      {
+        method: 'POST',
+        body: JSON.stringify({ email, code }),
+      },
+      false // No auth required
+    );
+    return response;
+  },
+
+  // Reset password with code
+  async resetPassword(email: string, code: string, newPassword: string): Promise<{ message: string; type: string }> {
+    const response = await apiCall<{ message: string; type: string }>(
+      '/users/reset-password',
+      {
+        method: 'POST',
+        body: JSON.stringify({ email, code, password: newPassword }),
+      },
+      false // No auth required
+    );
+    return response;
   },
 };
 
@@ -786,22 +850,47 @@ export const medicalDocumentApi = {
     }
     formData.append('file', file);
 
-    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/medical-documents/upload`, {
+    const token = getAuthToken();
+    const headers: HeadersInit = {};
+    
+    // Add JWT token if available
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    // Don't set Content-Type header - browser will set it automatically with boundary for FormData
+
+    const response = await fetch(`${API_BASE_URL}/medical-documents/upload`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Basic ${btoa(`${localStorage.getItem('email')}:${localStorage.getItem('password')}`)}`,
-      },
-      credentials: 'include',
+      headers,
       body: formData,
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Error uploading medical document');
+      // Try to parse error as JSON, but handle cases where response might not be JSON
+      let errorMessage = 'Erreur lors de l\'upload du document';
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const error = await response.json();
+          errorMessage = error.message || errorMessage;
+        } else {
+          errorMessage = `Erreur ${response.status}: ${response.statusText}`;
+        }
+      } catch (e) {
+        errorMessage = `Erreur ${response.status}: ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
     }
 
-    const result = await response.json();
-    return result.data;
+    // Parse successful response
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      const result = await response.json();
+      return result.data;
+    } else {
+      throw new Error('Réponse inattendue du serveur');
+    }
   },
 
   // Get all medical documents for a patient
@@ -836,22 +925,36 @@ export const medicalDocumentApi = {
 
   // Download a medical document
   async downloadMedicalDocument(documentId: string): Promise<Blob> {
-    const email = localStorage.getItem('email');
-    const password = localStorage.getItem('password');
-    const auth = btoa(`${email}:${password}`);
+    const token = getAuthToken();
+    const headers: HeadersInit = {};
+    
+    // Add JWT token if available
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
 
     const response = await fetch(
-      `${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/medical-documents/${documentId}/download`,
+      `${API_BASE_URL}/medical-documents/${documentId}/download`,
       {
         method: 'GET',
-        headers: {
-          'Authorization': `Basic ${auth}`,
-        },
+        headers,
       }
     );
 
     if (!response.ok) {
-      throw new Error('Error downloading medical document');
+      let errorMessage = 'Erreur lors du téléchargement du document';
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const error = await response.json();
+          errorMessage = error.message || errorMessage;
+        } else {
+          errorMessage = `Erreur ${response.status}: ${response.statusText}`;
+        }
+      } catch (e) {
+        errorMessage = `Erreur ${response.status}: ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
     }
 
     return response.blob();
@@ -861,6 +964,91 @@ export const medicalDocumentApi = {
   async deleteMedicalDocument(documentId: string): Promise<void> {
     await apiCall<MedicalDocumentApiResponse>(
       `/medical-documents/${documentId}`,
+      {
+        method: 'DELETE',
+      },
+      true
+    );
+  },
+};
+
+// Donation API functions
+export interface DonationApiResponse {
+  message: string;
+  type: 'success' | 'error';
+  donation?: Donation;
+  data?: Donation[];
+  count?: number;
+}
+
+export const donationApi = {
+  // Create a new donation
+  async createDonation(donation: {
+    donateurId: string;
+    type: 'argent' | 'materiel' | 'sang';
+    montant?: number;
+    description?: string;
+    date?: string;
+    heure?: string;
+  }): Promise<Donation> {
+    const response = await apiCall<DonationApiResponse>(
+      '/donations',
+      {
+        method: 'POST',
+        body: JSON.stringify(donation),
+      },
+      true
+    );
+    return response.donation!;
+  },
+
+  // Get all donations by donateur ID
+  async getDonationsByDonateur(donateurId: string): Promise<Donation[]> {
+    const response = await apiCall<DonationApiResponse>(
+      `/donations/donateur/${donateurId}`,
+      {},
+      true
+    );
+    return Array.isArray(response.data) ? response.data : [];
+  },
+
+  // Get all donations (admin)
+  async getAllDonations(): Promise<Donation[]> {
+    const response = await apiCall<DonationApiResponse>(
+      '/donations',
+      {},
+      true
+    );
+    return Array.isArray(response.data) ? response.data : [];
+  },
+
+  // Get donation by ID
+  async getDonationById(id: string): Promise<Donation> {
+    const response = await apiCall<DonationApiResponse>(
+      `/donations/${id}`,
+      {},
+      true
+    );
+    return response.donation!;
+  },
+
+  // Update donation status
+  async updateDonationStatus(id: string, statut: 'en_attente' | 'acceptee' | 'traitee' | 'refuse'): Promise<Donation> {
+    const response = await apiCall<DonationApiResponse>(
+      `/donations/${id}/status`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ statut }),
+      },
+      true
+    );
+    return response.donation!;
+  },
+
+  // Delete a donation
+  async deleteDonation(id: string): Promise<void> {
+    await apiCall<DonationApiResponse>(
+      `/donations/${id}`,
       {
         method: 'DELETE',
       },

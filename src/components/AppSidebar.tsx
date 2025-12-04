@@ -8,7 +8,8 @@ import {
   Package,
   ShoppingCart,
   TrendingUp,
-  DollarSign
+  DollarSign,
+  Droplet
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,6 +36,7 @@ export function AppSidebar() {
           { title: 'Tableau de bord', url: '/dashboard', icon: LayoutDashboard },
           { title: 'Utilisateurs', url: '/users', icon: Users },
           { title: 'Statistiques', url: '/statistics', icon: TrendingUp },
+          { title: 'Gestion des Dons', url: '/donations-management', icon: DollarSign },
         ];
       case 'patient':
         return [
@@ -55,6 +57,7 @@ export function AppSidebar() {
           { title: 'Stock', url: '/inventory', icon: Package },
           { title: 'Commandes', url: '/orders', icon: ShoppingCart },
           { title: 'Alertes Stock', url: '/stock-alerts', icon: Pill },
+          { title: 'Dons de Sang', url: '/blood-donations', icon: Droplet },
         ];
       case 'donnateur':
         return [
