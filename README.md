@@ -1,73 +1,137 @@
-# Welcome to your Lovable project
+# 🏥 Hospital Services Management - Frontend
 
-## Project info
+A modern React-based web application for managing hospital services, including patient appointments, medical records, doctor management, pharmacy inventory, and donations.
 
-**URL**: https://lovable.dev/projects/e3a2a96e-f026-4e5c-a901-f3302d941228
+⚠️ **Note:** This is a frontend demo version using mock data. All data is simulated and no real backend integration is required for testing.
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+## 🚀 Live Demo
 
-**Use Lovable**
+🔗 **[Deploy to Vercel](https://vercel.com/new)**  
+After pushing to GitHub, connect your repo to Vercel for instant deployment.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/e3a2a96e-f026-4e5c-a901-f3302d941228) and start prompting.
+---
 
-Changes made via Lovable will be committed automatically to this repo.
+## 🛠️ Tech Stack
 
-**Use your preferred IDE**
+| Technology | Purpose |
+|------------|---------|
+| **React 18** | UI Framework |
+| **TypeScript** | Type Safety |
+| **Tailwind CSS** | Styling & Responsive Design |
+| **Vite** | Build Tool & Dev Server |
+| **Shadcn/ui** | Component Library |
+| **React Router** | Client-side Routing |
+| **React Hook Form** | Form Management |
+| **Zod** | Schema Validation |
+| **TanStack Query** | Data Fetching |
+| **Sonner** | Toast Notifications |
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+---
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## ✨ Features
 
-Follow these steps:
+### 👨‍💼 Admin Features
+- Dashboard overview with user statistics
+- User management (create, block, archive)
+- View all users by role
+- Donation management
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### 👤 Patient Features
+- View and manage appointments
+- Medical records access
+- Download medical documents
+- Schedule new appointments
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### 👨‍⚕️ Doctor Features
+- View patient list
+- Manage appointments by patient
+- Upload medical documents
+- Manage medication orders
 
-# Step 3: Install the necessary dependencies.
-npm i
+### 💊 Pharmacist Features
+- Inventory management
+- Low stock alerts
+- Order validation & rejection
+- Stock tracking
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+### 💝 Donor Features
+- Create donations (money, materials, blood)
+- Track donation history
+- View donation status
+
+---
+
+## ⚠️ Important Notes
+
+### Mock Data Mode
+This project uses **mock data** by default (no backend required).
+
+- ✅ All dashboards work with simulated data
+- ⚠️ Data is lost on page refresh (in-memory only)
+
+### Test Credentials
+
+All users share the same password for easier testing:
+
+```
+Password: password123
 ```
 
-**Edit a file directly in GitHub**
+**Available Users:**
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+| Email | Role |
+|-------|------|
+| admin@hopital.fr | Admin |
+| patient@hopital.fr | Patient |
+| medecin@hopital.fr | Doctor |
+| pharmacien@hopital.fr | Pharmacist |
+| donnateur@hopital.fr | Donor |
 
-**Use GitHub Codespaces**
+---
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## ▶️ Run Locally
 
-## What technologies are used for this project?
+### Prerequisites
+- Node.js 16+ 
+- npm or bun
 
-This project is built with:
+### Installation
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/gestion-des-services-hospitalier.git
+cd Gestion-Des-Services-Hospitalier-Front
 
-## How can I deploy this project?
+# Install dependencies
+npm install
 
-Simply open [Lovable](https://lovable.dev/projects/e3a2a96e-f026-4e5c-a901-f3302d941228) and click on Share -> Publish.
+```
 
-## Can I connect a custom domain to my Lovable project?
+### Development Mode
 
-Yes, you can!
+```bash
+# Start development server
+npm run dev
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+---
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+
+## 📁 Project Structure
+
+```
+src/
+├── components/        # Reusable UI components
+├── contexts/         # React Context (Auth)
+├── lib/
+│   ├── api.ts       # API calls (mock & real)
+│   ├── mockData.ts  # Mock data
+│   └── utils.ts     # Utilities
+├── pages/           # Page components
+├── types/           # TypeScript types
+└── App.tsx          # Main app
+```
+
+---
+

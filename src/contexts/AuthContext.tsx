@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '@/types';
+import { userApi } from '@/lib/api';
 
 interface AuthContextType {
   user: User | null;
@@ -37,36 +38,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      const response = await fetch('http://localhost:8081/api/users/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
+      const { user, token } = await userApi.login(email, password);
 
-      const data = await response.json();
+      setUser(user);
+      setToken(token);
+      localStorage.setItem('currentUser', JSON.stringify(user));
+      localStorage.setItem('authToken', token);
 
-      if (response.ok && data.type === 'success' && data.token) {
-        // Store user and token
-        const userData = data.user;
-        const user: User = {
-          id: userData.id,
-          email: userData.email,
-          nom: userData.nom,
-          prenom: userData.prenom,
-          role: userData.role,
-        };
-
-        setUser(user);
-        setToken(data.token);
-        localStorage.setItem('currentUser', JSON.stringify(user));
-        localStorage.setItem('authToken', data.token);
-        
-        return true;
-      }
-      
-      return false;
+      return true;
     } catch (error) {
       console.error('Login error:', error);
       return false;
