@@ -38,20 +38,20 @@ const MedicalRecords = () => {
     fetchDocuments();
   }, [user?.id, toast]);
 
-  const handleDownload = async (document: MedicalDocument) => {
+  const handleDownload = async (doc: MedicalDocument) => {
     try {
-      setDownloadingId(document.id);
-      const blob = await medicalDocumentApi.downloadMedicalDocument(document.id);
+      setDownloadingId(doc.id);
+      const blob = await medicalDocumentApi.downloadMedicalDocument(doc.id);
       
       // Create download link
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${document.titre}${document.urlFichier.substring(document.urlFichier.lastIndexOf('.'))}`;
-      document.body.appendChild(a);
-      a.click();
+      const link = window.document.createElement('a');
+      link.href = url;
+      link.download = `${doc.titre}${doc.urlFichier.substring(doc.urlFichier.lastIndexOf('.'))}`;
+      window.document.body.appendChild(link);
+      link.click();
       window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      window.document.body.removeChild(link);
       
       toast({
         title: 'Succès',
@@ -128,19 +128,19 @@ const MedicalRecords = () => {
                 </CardContent>
               </Card>
             ) : (
-              documents.map(document => (
-                <Card key={document.id} className="hover:shadow-lg transition-shadow">
+              documents.map(doc => (
+                <Card key={doc.id} className="hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          <CardTitle className="text-xl">{document.titre}</CardTitle>
-                          <Badge variant={getTypeVariant(document.type)}>
-                            {getTypeLabel(document.type)}
+                          <CardTitle className="text-xl">{doc.titre}</CardTitle>
+                          <Badge variant={getTypeVariant(doc.type)}>
+                            {getTypeLabel(doc.type)}
                           </Badge>
                         </div>
                         <CardDescription className="mt-1">
-                          Ajouté le {new Date(document.dateUpload).toLocaleDateString('fr-FR', {
+                          Ajouté le {new Date(doc.dateUpload).toLocaleDateString('fr-FR', {
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric',
@@ -152,10 +152,10 @@ const MedicalRecords = () => {
                       <Button 
                         variant="ghost" 
                         size="icon"
-                        onClick={() => handleDownload(document)}
-                        disabled={downloadingId === document.id}
+                        onClick={() => handleDownload(doc)}
+                        disabled={downloadingId === doc.id}
                       >
-                        {downloadingId === document.id ? (
+                        {downloadingId === doc.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <Download className="h-4 w-4" />
@@ -164,18 +164,18 @@ const MedicalRecords = () => {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {document.description && (
+                    {doc.description && (
                       <div>
                         <h4 className="font-semibold mb-2">Description</h4>
-                        <p className="text-sm text-muted-foreground">{document.description}</p>
+                        <p className="text-sm text-muted-foreground">{doc.description}</p>
                       </div>
                     )}
 
                     <Button 
                       variant="outline" 
                       className="w-full gap-2"
-                      onClick={() => handleDownload(document)}
-                      disabled={downloadingId === document.id}
+                      onClick={() => handleDownload(doc)}
+                      disabled={downloadingId === doc.id}
                     >
                       {downloadingId === document.id ? (
                         <>

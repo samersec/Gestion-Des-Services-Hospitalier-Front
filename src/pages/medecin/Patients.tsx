@@ -20,11 +20,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Users, Search, FileText, Calendar, Upload, Loader2 } from 'lucide-react';
+import { Users, Search, FileText, Calendar, Upload, Loader2, Download, Trash2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { appointmentApi, userApi, medicalDocumentApi } from '@/lib/api';
+import { appointmentApi, userApi, medicalDocumentApi, type MedicalDocument } from '@/lib/api';
 import type { Appointment, User } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+
+const API_BASE_URL = 'http://localhost:8081/api';
 
 const Patients = () => {
   const { user } = useAuth();
@@ -35,6 +37,8 @@ const Patients = () => {
   const [selectedPatient, setSelectedPatient] = useState<User | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [patientDocuments, setPatientDocuments] = useState<MedicalDocument[]>([]);
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
   
   // Form state
   const [titre, setTitre] = useState('');
@@ -69,7 +73,24 @@ const Patients = () => {
     );
   });
 
-  const handleOpenDialog = (patient: User) => {
+  const loadPatientDocuments = async (patientId: string) => {
+    setIsLoadingDocuments(true);
+    try {
+      const documents = await medicalDocumentApi.getMedicalDocumentsByPatient(patientId);
+      setPatientDocuments(documents);
+    } catch (error) {
+      console.error('Error loading patient documents:', error);
+      toast({
+        title: 'Erreur',
+        description: 'Impossible de charger les documents du patient',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingDocuments(false);
+    }
+  };
+
+  const handleOpenDialog = async (patient: User) => {
     setSelectedPatient(patient);
     setIsDialogOpen(true);
     // Reset form
@@ -77,6 +98,8 @@ const Patients = () => {
     setType('');
     setDescription('');
     setFile(null);
+    // Load patient documents
+    await loadPatientDocuments(patient.id);
   };
 
   const handleCloseDialog = () => {
@@ -86,6 +109,7 @@ const Patients = () => {
     setType('');
     setDescription('');
     setFile(null);
+    setPatientDocuments([]);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -122,7 +146,14 @@ const Patients = () => {
         description: 'Document médical ajouté avec succès',
       });
       
-      handleCloseDialog();
+      // Reload documents and reset form
+      if (selectedPatient) {
+        await loadPatientDocuments(selectedPatient.id);
+      }
+      setTitre('');
+      setType('');
+      setDescription('');
+      setFile(null);
     } catch (error) {
       console.error('Error uploading medical document:', error);
       toast({
@@ -226,16 +257,81 @@ const Patients = () => {
           )}
         </div>
 
-        {/* Upload Medical Document Dialog */}
+        {/* Patient Dossier Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Ajouter un document médical</DialogTitle>
+              <DialogTitle>Dossier médical - {selectedPatient?.prenom} {selectedPatient?.nom}</DialogTitle>
               <DialogDescription>
-                {selectedPatient && `Ajouter un document au dossier de ${selectedPatient.prenom} ${selectedPatient.nom}`}
+                Consultez et gérez les documents médicaux de ce patient
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSubmit}>
+            
+            {/* Existing Documents List */}
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Documents existants</h3>
+                {isLoadingDocuments ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-sm text-muted-foreground">Chargement des documents...</span>
+                  </div>
+                ) : patientDocuments.length === 0 ? (
+                  <div className="text-center py-8 border rounded-lg bg-muted/30">
+                    <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground">Aucun document médical pour ce patient</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {patientDocuments.map((doc) => (
+                      <Card key={doc.id} className="p-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <FileText className="h-4 w-4 text-primary" />
+                              <p className="font-medium">{doc.titre}</p>
+                              <span className="px-2 py-0.5 text-xs rounded-full bg-primary/10 text-primary">
+                                {doc.type}
+                              </span>
+                            </div>
+                            {doc.description && (
+                              <p className="text-sm text-muted-foreground mb-1">{doc.description}</p>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                              Ajouté le {new Date(doc.dateUpload).toLocaleDateString('fr-FR', {
+                                day: 'numeric',
+                                month: 'long',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                window.open(`${API_BASE_URL}/medical-documents/${doc.id}/download`, '_blank');
+                              }}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Divider */}
+              <div className="border-t my-4" />
+
+              {/* Add New Document Form */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Ajouter un nouveau document</h3>
+                <form onSubmit={handleSubmit}>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
                   <Label htmlFor="titre">Titre du document *</Label>
@@ -292,31 +388,33 @@ const Patients = () => {
                     </p>
                   )}
                 </div>
+                  </div>
+                  <DialogFooter className="mt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleCloseDialog}
+                      disabled={isUploading}
+                    >
+                      Fermer
+                    </Button>
+                    <Button type="submit" disabled={isUploading}>
+                      {isUploading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Upload en cours...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="mr-2 h-4 w-4" />
+                          Ajouter le document
+                        </>
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </form>
               </div>
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleCloseDialog}
-                  disabled={isUploading}
-                >
-                  Annuler
-                </Button>
-                <Button type="submit" disabled={isUploading}>
-                  {isUploading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Upload en cours...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="mr-2 h-4 w-4" />
-                      Ajouter le document
-                    </>
-                  )}
-                </Button>
-              </DialogFooter>
-            </form>
+            </div>
           </DialogContent>
         </Dialog>
       </div>

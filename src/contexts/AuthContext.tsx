@@ -24,8 +24,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     if (storedUser && storedToken) {
       try {
-        setUser(JSON.parse(storedUser));
-        setToken(storedToken);
+      setUser(JSON.parse(storedUser));
+      setToken(storedToken);
       } catch (e) {
         console.error('Erreur lors du parsing de currentUser depuis le localStorage', e);
         localStorage.removeItem('currentUser');

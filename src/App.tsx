@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
 import Dashboard from "./pages/Dashboard";
 import Unauthorized from "./pages/Unauthorized";
 import NotFound from "./pages/NotFound";
@@ -13,11 +14,13 @@ import PatientAppointments from "./pages/patient/Appointments";
 import PatientMedicalRecords from "./pages/patient/MedicalRecords";
 import AdminUsers from "./pages/admin/Users";
 import AdminStatistics from "./pages/admin/Statistics";
+import AdminDonationsManagement from "./pages/admin/DonationsManagement";
 import MedecinPatients from "./pages/medecin/Patients";
 import MedecinOrders from "./pages/medecin/Orders";
 import PharmacienInventory from "./pages/pharmacien/Inventory";
 import PharmacienOrders from "./pages/pharmacien/Orders";
 import PharmacienStockAlerts from "./pages/pharmacien/StockAlerts";
+import PharmacienBloodDonations from "./pages/pharmacien/BloodDonations";
 import DonnateurDonations from "./pages/donnateur/Donations";
 import DonnateurNewDonation from "./pages/donnateur/NewDonation";
 import SharedOrders from "./pages/shared/Orders";
@@ -54,6 +57,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<RootRedirect />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
             
             <Route
@@ -100,6 +104,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/donations-management"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminDonationsManagement />
+                </ProtectedRoute>
+              }
+            />
             
             {/* Médecin Routes */}
             <Route
@@ -133,6 +145,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['pharmacien']}>
                   <PharmacienStockAlerts />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/blood-donations"
+              element={
+                <ProtectedRoute allowedRoles={['pharmacien']}>
+                  <PharmacienBloodDonations />
                 </ProtectedRoute>
               }
             />

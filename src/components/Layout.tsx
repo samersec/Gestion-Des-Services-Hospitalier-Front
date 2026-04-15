@@ -63,7 +63,11 @@ export const Layout = ({ children }: LayoutProps) => {
       
       setLastNotificationCount(count);
     } catch (error) {
+      // Silently fail - backend might not be running or notifications endpoint might not exist
       console.error('Error fetching notifications:', error);
+      // Set empty state to avoid UI issues
+      setNotifications([]);
+      setUnreadCount(0);
     }
   };
 

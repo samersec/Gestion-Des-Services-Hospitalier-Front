@@ -99,8 +99,11 @@ export interface Donation {
   type: 'argent' | 'materiel' | 'sang';
   montant?: number;
   description?: string;
-  date: string;
-  statut: 'en_attente' | 'acceptee' | 'traitee';
+  date?: string; // For blood donations - preferred date (YYYY-MM-DD)
+  heure?: string; // For blood donations - preferred time (HH:mm)
+  statut: 'en_attente' | 'acceptee' | 'traitee' | 'refuse';
+  dateCreation?: string;
+  dateModification?: string;
 }
 
 // Admin statistics about users

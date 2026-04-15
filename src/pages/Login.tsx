@@ -148,6 +148,17 @@ const Login = () => {
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? 'Connexion...' : 'Se connecter'}
                   </Button>
+                  
+                  <div className="text-center mt-4">
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="text-sm"
+                      onClick={() => navigate('/forgot-password')}
+                    >
+                      Mot de passe oublié ?
+                    </Button>
+                  </div>
                 </form>
 
                 <div className="mt-6">
@@ -250,6 +261,17 @@ const Login = () => {
                   <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={isLoading}>
                     {isLoading ? 'Connexion...' : 'Se connecter'}
                   </Button>
+                  
+                  <div className="text-center mt-4">
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="text-sm"
+                      onClick={() => navigate('/forgot-password')}
+                    >
+                      Mot de passe oublié ?
+                    </Button>
+                  </div>
                 </form>
 
                 <div className="mt-6">
