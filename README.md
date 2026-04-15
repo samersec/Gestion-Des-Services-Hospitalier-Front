@@ -8,8 +8,8 @@ A modern React-based web application for managing hospital services, including p
 
 ## 🚀 Live Demo
 
-🔗 **[Deploy to Vercel](https://vercel.com/new)**  
-After pushing to GitHub, connect your repo to Vercel for instant deployment.
+🔗 **[Visit Live Demo](https://gestion-des-services-hospitalier-fr.vercel.app/login)**  
+Test the application with credentials: `admin@hopital.fr` / `password123`
 
 ---
 
