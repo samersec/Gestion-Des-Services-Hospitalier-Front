@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <style>
+      .hospital-icon-bg { fill: #0891b2; }
+      .hospital-icon-cross { fill: white; }
+    </style>
+  </defs>
+  <!-- Blue circle background -->
+  <circle class="hospital-icon-bg" cx="128" cy="128" r="128"/>
+  
+  <!-- White medical cross -->
+  <g class="hospital-icon-cross">
+    <!-- Vertical bar -->
+    <rect x="108" y="68" width="40" height="120" rx="4"/>
+    <!-- Horizontal bar -->
+    <rect x="68" y="108" width="120" height="40" rx="4"/>
+  </g>
+</svg>
